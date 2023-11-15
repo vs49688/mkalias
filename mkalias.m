@@ -14,7 +14,7 @@ int main(int argc, char **argv)
         NSURL   *source_url = [NSURL fileURLWithPath:[NSString stringWithUTF8String:argv[1]]];
         NSURL   *target_url = [NSURL fileURLWithPath:[NSString stringWithUTF8String:argv[2]]];
 
-        printf("%s -> %s\n", [[source_url absoluteString] UTF8String], [[target_url absoluteString] UTF8String]);
+        // printf("%s -> %s\n", [[source_url absoluteString] UTF8String], [[target_url absoluteString] UTF8String]);
 
         data = [source_url bookmarkDataWithOptions:NSURLBookmarkCreationSuitableForBookmarkFile
                     includingResourceValuesForKeys:nil
