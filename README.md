@@ -21,4 +21,4 @@ mkalias hex <source_file>
 
 ## License
 
-MIT
+GPL-2.0-only (https://www.gnu.org/licenses/old-licenses/gpl-2.0-standalone.html)
