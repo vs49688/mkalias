@@ -13,22 +13,25 @@ typedef struct Arguments {
     const char  *target;
     int          verbose;
     OutputFormat format;
+    int          help;
 } Arguments;
 
 static int parse_arguments(Arguments *args, int argc, char **argv)
 {
     int c;
-    int errflag = 0;
-    int npos    = 0;
+    int errflag  = 0;
+    int npos     = 0;
+    int max_posn = 2;
 
     *args = (Arguments){
         .source  = NULL,
         .target  = NULL,
         .verbose = 0,
         .format  = OUTPUT_FORMAT_HEX,
+        .help    = 0,
     };
 
-    while((c = getopt(argc, argv, "vf:")) != -1) {
+    while((c = getopt(argc, argv, "vf:hV")) != -1) {
         switch(c) {
             case 'v':
                 ++args->verbose;
@@ -44,6 +47,10 @@ static int parse_arguments(Arguments *args, int argc, char **argv)
                     fprintf(stderr, "Invalid '-f' value: %s\n", optarg);
                     ++errflag;
                 }
+                break;
+            case 'h':
+                args->help = 1;
+                max_posn   = 0;
                 break;
             case '?':
             case ':':
@@ -63,11 +70,13 @@ static int parse_arguments(Arguments *args, int argc, char **argv)
             args->target = argv[optind];
     }
 
-    if(npos > 2)
+    if(npos > max_posn)
         return -1;
 
-    if(args->source == NULL)
-        return -1;
+    if(max_posn > 0) {
+        if(args->source == NULL)
+            return -1;
+    }
 
     return 0;
 }
@@ -100,14 +109,25 @@ NSData *format_data(NSData *data, OutputFormat format)
     return NULL;
 }
 
+static void print_usage(const char *argv0)
+{
+    fprintf(stderr, "Usage: %s [-v] <source_file> <target_file>\n", argv0);
+    fprintf(stderr, "       %s [-v] [-f bin|hex|base64] <source_file>\n", argv0);
+    fprintf(stderr, "       %s -h\n", argv0);
+}
+
 int main(int argc, char **argv)
 {
     Arguments args;
 
     if(parse_arguments(&args, argc, argv) < 0) {
-        fprintf(stderr, "Usage: %s [-v] <source_file> <target_file>\n", argv[0]);
-        fprintf(stderr, "       %s [-v] [-f bin|hex|base64] <source_file>\n", argv[0]);
+        print_usage(argv[0]);
         return 2;
+    }
+
+    if(args.help) {
+        print_usage(argv[0]);
+        return 0;
     }
 
     @autoreleasepool {
