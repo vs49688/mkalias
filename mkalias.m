@@ -1,20 +1,72 @@
 // SPDX-License-Identifier: MIT
+#include <unistd.h>
 #import <Foundation/Foundation.h>
+
+typedef struct Arguments {
+    const char *source;
+    const char *target;
+    int         verbose;
+} Arguments;
+
+static int parse_arguments(Arguments *args, int argc, char **argv)
+{
+    int c;
+    int errflag = 0;
+    int npos    = 0;
+
+    *args = (Arguments){
+        .source  = NULL,
+        .target  = NULL,
+        .verbose = 0,
+    };
+
+    while((c = getopt(argc, argv, "v")) != -1) {
+        switch(c) {
+            case 'v':
+                ++args->verbose;
+                break;
+            case '?':
+            case ':':
+                ++errflag;
+            default:
+                break;
+        }
+    }
+
+    if(errflag > 0)
+        return -1;
+
+    for(; optind < argc; ++optind, ++npos) {
+        if(npos == 0)
+            args->source = argv[optind];
+        else if(npos == 1)
+            args->target = argv[optind];
+    }
+
+    if(npos != 2)
+        return -1;
+
+    return 0;
+}
 
 int main(int argc, char **argv)
 {
-    if(argc != 3) {
-        fprintf(stderr, "Usage: %s <source> <target>\n", argv[0]);
+    Arguments args;
+
+    if(parse_arguments(&args, argc, argv) < 0) {
+        fprintf(stderr, "Usage: %s [-v] <source_file> <target_file>\n", argv[0]);
         return 2;
     }
 
     @autoreleasepool {
         NSError *error      = nil;
         NSData  *data       = nil;
-        NSURL   *source_url = [NSURL fileURLWithPath:[NSString stringWithUTF8String:argv[1]]];
-        NSURL   *target_url = [NSURL fileURLWithPath:[NSString stringWithUTF8String:argv[2]]];
+        NSURL   *source_url = [NSURL fileURLWithPath:[NSString stringWithUTF8String:args.source]];
+        NSURL   *target_url = [NSURL fileURLWithPath:[NSString stringWithUTF8String:args.target]];
 
-        // printf("%s -> %s\n", [[source_url absoluteString] UTF8String], [[target_url absoluteString] UTF8String]);
+        if(args.verbose) {
+            fprintf(stderr, "%s -> %s\n", [[source_url absoluteString] UTF8String], [[target_url absoluteString] UTF8String]);
+        }
 
         data = [source_url bookmarkDataWithOptions:NSURLBookmarkCreationSuitableForBookmarkFile
                     includingResourceValuesForKeys:nil
