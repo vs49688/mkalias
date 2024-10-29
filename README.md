@@ -16,7 +16,7 @@ mkalias <source_file> <target_file>
 
 #### Dump alias data to stdout, in hex
 ```
-mkalias hex <source_file>
+mkalias -f hex <source_file>
 ```
 
 ## License
