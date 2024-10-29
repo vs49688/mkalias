@@ -2,10 +2,17 @@
 #include <unistd.h>
 #import <Foundation/Foundation.h>
 
+typedef enum OutputFormat {
+    OUTPUT_FORMAT_HEX    = 0,
+    OUTPUT_FORMAT_BINARY = 1,
+    OUTPUT_FORMAT_BASE64 = 2,
+} OutputFormat;
+
 typedef struct Arguments {
-    const char *source;
-    const char *target;
-    int         verbose;
+    const char  *source;
+    const char  *target;
+    int          verbose;
+    OutputFormat format;
 } Arguments;
 
 static int parse_arguments(Arguments *args, int argc, char **argv)
@@ -18,12 +25,25 @@ static int parse_arguments(Arguments *args, int argc, char **argv)
         .source  = NULL,
         .target  = NULL,
         .verbose = 0,
+        .format  = OUTPUT_FORMAT_HEX,
     };
 
-    while((c = getopt(argc, argv, "v")) != -1) {
+    while((c = getopt(argc, argv, "vf:")) != -1) {
         switch(c) {
             case 'v':
                 ++args->verbose;
+                break;
+            case 'f':
+                if(strcmp(optarg, "bin") == 0) {
+                    args->format = OUTPUT_FORMAT_BINARY;
+                } else if(strcmp(optarg, "hex") == 0) {
+                    args->format = OUTPUT_FORMAT_HEX;
+                } else if(strcmp(optarg, "base64") == 0) {
+                    args->format = OUTPUT_FORMAT_BASE64;
+                } else {
+                    fprintf(stderr, "Invalid '-f' value: %s\n", optarg);
+                    ++errflag;
+                }
                 break;
             case '?':
             case ':':
@@ -43,10 +63,41 @@ static int parse_arguments(Arguments *args, int argc, char **argv)
             args->target = argv[optind];
     }
 
-    if(npos != 2)
+    if(npos > 2)
+        return -1;
+
+    if(args->source == NULL)
         return -1;
 
     return 0;
+}
+
+NSData *format_data(NSData *data, OutputFormat format)
+{
+    switch(format) {
+        case OUTPUT_FORMAT_BINARY:
+            return data;
+        case OUTPUT_FORMAT_BASE64:
+            return [data base64EncodedDataWithOptions:0];
+        case OUTPUT_FORMAT_HEX: {
+            const char    *alphabet = "0123456789abcdef";
+            const uint8_t *inb      = [data bytes];
+
+            NSMutableData *nd   = [NSMutableData dataWithLength:[data length] * 2];
+            uint8_t       *outb = [nd mutableBytes];
+
+            for(NSUInteger i = 0; i < [data length]; ++i, outb += 2) {
+                outb[0] = alphabet[(inb[i] & 0xF0) >> 4];
+                outb[1] = alphabet[(inb[i] & 0x0F) >> 0];
+            }
+            return nd;
+        }
+
+        default:
+            break;
+    }
+
+    return NULL;
 }
 
 int main(int argc, char **argv)
@@ -55,6 +106,7 @@ int main(int argc, char **argv)
 
     if(parse_arguments(&args, argc, argv) < 0) {
         fprintf(stderr, "Usage: %s [-v] <source_file> <target_file>\n", argv[0]);
+        fprintf(stderr, "       %s [-v] [-f bin|hex|base64] <source_file>\n", argv[0]);
         return 2;
     }
 
@@ -62,11 +114,6 @@ int main(int argc, char **argv)
         NSError *error      = nil;
         NSData  *data       = nil;
         NSURL   *source_url = [NSURL fileURLWithPath:[NSString stringWithUTF8String:args.source]];
-        NSURL   *target_url = [NSURL fileURLWithPath:[NSString stringWithUTF8String:args.target]];
-
-        if(args.verbose) {
-            fprintf(stderr, "%s -> %s\n", [[source_url absoluteString] UTF8String], [[target_url absoluteString] UTF8String]);
-        }
 
         data = [source_url bookmarkDataWithOptions:NSURLBookmarkCreationSuitableForBookmarkFile
                     includingResourceValuesForKeys:nil
@@ -77,13 +124,31 @@ int main(int argc, char **argv)
             return 1;
         }
 
-        (void)[NSURL writeBookmarkData:data
-                                 toURL:target_url
-                               options:NSURLBookmarkCreationSuitableForBookmarkFile
-                                 error:&error];
-        if(error != nil) {
-            fprintf(stderr, "Error writing bookmark data: %s\n", [[error localizedDescription] UTF8String]);
-            return 1;
+        /*
+         * If a target file is specified, write the alias.
+         * Otherwise, we dump the data in the given format to stdout. Some tools can use this.
+         */
+        if(args.target != NULL) {
+            NSURL *target_url = [NSURL fileURLWithPath:[NSString stringWithUTF8String:args.target]];
+
+            if(args.verbose) {
+                fprintf(stderr, "%s -> %s\n", [[source_url absoluteString] UTF8String],
+                        [[target_url absoluteString] UTF8String]);
+            }
+
+            (void)[NSURL writeBookmarkData:data
+                                     toURL:target_url
+                                   options:NSURLBookmarkCreationSuitableForBookmarkFile
+                                     error:&error];
+            if(error != nil) {
+                fprintf(stderr, "Error writing bookmark data: %s\n", [[error localizedDescription] UTF8String]);
+                return 1;
+            }
+        } else {
+            NSData *d = format_data(data, args.format);
+
+            /* Potentially slow, but stdout should be buffered. */
+            fwrite([d bytes], [d length], 1, stdout);
         }
     }
 
