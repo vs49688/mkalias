@@ -131,7 +131,7 @@ static void print_usage(const char *argv0)
 
 static void print_version(FILE *fp)
 {
-    fprintf(fp, "mkalias v" MKALIAS_VERSION "\n"
+    fprintf(fp, "mkalias " MKALIAS_VERSION "\n"
                 "Copyright (C) 2024 Zane van Iperen.\n"
                 "License GPLv2: GNU GPL version 2 only <https://www.gnu.org/licenses/old-licenses/gpl-2.0-standalone.html>.\n\n"
                 "This is free software: you are free to change and restribute it.\n"
