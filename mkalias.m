@@ -2,6 +2,10 @@
 #include <unistd.h>
 #import <Foundation/Foundation.h>
 
+#ifndef MKALIAS_VERSION
+#define MKALIAS_VERSION "(devel)"
+#endif
+
 typedef enum OutputFormat {
     OUTPUT_FORMAT_HEX    = 0,
     OUTPUT_FORMAT_BINARY = 1,
@@ -14,6 +18,7 @@ typedef struct Arguments {
     int          verbose;
     OutputFormat format;
     int          help;
+    int          version;
 } Arguments;
 
 static int parse_arguments(Arguments *args, int argc, char **argv)
@@ -29,6 +34,7 @@ static int parse_arguments(Arguments *args, int argc, char **argv)
         .verbose = 0,
         .format  = OUTPUT_FORMAT_HEX,
         .help    = 0,
+        .version = 0,
     };
 
     while((c = getopt(argc, argv, "vf:hV")) != -1) {
@@ -51,6 +57,10 @@ static int parse_arguments(Arguments *args, int argc, char **argv)
             case 'h':
                 args->help = 1;
                 max_posn   = 0;
+                break;
+            case 'V':
+                args->version = 1;
+                max_posn      = 0;
                 break;
             case '?':
             case ':':
@@ -77,6 +87,9 @@ static int parse_arguments(Arguments *args, int argc, char **argv)
         if(args->source == NULL)
             return -1;
     }
+
+    if(args->help && args->version)
+        return -1;
 
     return 0;
 }
@@ -113,7 +126,12 @@ static void print_usage(const char *argv0)
 {
     fprintf(stderr, "Usage: %s [-v] <source_file> <target_file>\n", argv0);
     fprintf(stderr, "       %s [-v] [-f bin|hex|base64] <source_file>\n", argv0);
-    fprintf(stderr, "       %s -h\n", argv0);
+    fprintf(stderr, "       %s [-h|-V]\n", argv0);
+}
+
+static void print_version(FILE *fp)
+{
+    fprintf(fp, "mkalias v" MKALIAS_VERSION "\n");
 }
 
 int main(int argc, char **argv)
@@ -127,6 +145,11 @@ int main(int argc, char **argv)
 
     if(args.help) {
         print_usage(argv[0]);
+        return 0;
+    }
+
+    if(args.version) {
+        print_version(stdout);
         return 0;
     }
 
