@@ -149,6 +149,10 @@ int main(int argc, char **argv)
 
             /* Potentially slow, but stdout should be buffered. */
             fwrite([d bytes], [d length], 1, stdout);
+
+            if(isatty(fileno(stdout))) {
+                fputc('\n', stdout);
+            }
         }
     }
 
